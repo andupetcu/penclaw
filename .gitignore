@@ -1,0 +1,5 @@
+node_modules/
+dist/
+report.md
+report.json
+*.log
