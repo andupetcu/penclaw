@@ -3,3 +3,5 @@ dist/
 report.md
 report.json
 *.log
+test/fixtures/.env
+test/fixtures/vulnerable-app.js

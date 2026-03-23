@@ -1,8 +1,17 @@
 {
   "name": "penclaw",
   "version": "0.1.0",
-  "description": "AI-powered penetration testing CLI for static analysis and AI triage.",
+  "description": "AI-powered penetration testing CLI — static analysis, dynamic scanning, and intelligent triage.",
   "type": "module",
+  "homepage": "https://github.com/anthropics/penclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropics/penclaw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/anthropics/penclaw/issues"
+  },
+  "author": "PenClaw Contributors",
   "bin": {
     "penclaw": "./dist/cli/index.js"
   },
@@ -16,15 +25,23 @@
     "build": "tsc && chmod +x dist/cli/index.js",
     "clean": "rm -rf dist",
     "dev": "tsx src/cli/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "npm run build"
   },
   "keywords": [
     "security",
     "pentest",
+    "penetration-testing",
+    "vulnerability-scanner",
     "cli",
     "semgrep",
     "trivy",
-    "ai"
+    "nuclei",
+    "owasp",
+    "ai",
+    "sast",
+    "dast"
   ],
   "license": "MIT",
   "dependencies": {
@@ -41,6 +58,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

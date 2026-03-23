@@ -1,0 +1,10 @@
+src/
+test/
+tsconfig.json
+.penclaw*
+*.tgz
+.git/
+.github/
+PRD.md
+tmp-*
+coverage/
