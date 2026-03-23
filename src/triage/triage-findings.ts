@@ -65,8 +65,14 @@ function buildFallbackTriage(
   profile: TargetProfile,
 ): TriageFinding {
   const deduplicationKey = createDeduplicationKey(finding);
+  // Find related findings: exact dedup key match OR same category from different source type (static/dynamic correlation)
   const relatedFindings = allFindings
-    .filter((candidate) => candidate !== finding && createDeduplicationKey(candidate) === deduplicationKey)
+    .filter((candidate) => {
+      if (candidate === finding) return false;
+      if (createDeduplicationKey(candidate) === deduplicationKey) return true;
+      // Cross-source correlation: static finding + dynamic finding for same category boosts confidence
+      return candidate.category === finding.category && isStaticDynamicPair(finding.source, candidate.source);
+    })
     .map((candidate) => candidate.id);
 
   const severity = normalizeSeverity(finding.severity);
@@ -99,8 +105,23 @@ function createDeduplicationKey(finding: RawFinding): string {
 function calculateConfidence(finding: RawFinding, relatedCount: number): number {
   const base = 0.45 + severityWeight(finding.severity) * 0.08;
   const correlationBoost = Math.min(0.2, relatedCount * 0.08);
-  const sourceBoost = finding.source === "semgrep" || finding.source === "trivy" ? 0.08 : 0.03;
+  const sourceBoost = getSourceBoost(finding.source);
   return Math.min(0.98, Number((base + correlationBoost + sourceBoost).toFixed(2)));
+}
+
+function getSourceBoost(source: string): number {
+  switch (source) {
+    case "semgrep":
+    case "trivy":
+      return 0.08;
+    case "nuclei":
+    case "dynamic":
+      return 0.10;
+    case "fuzzer":
+      return 0.12;
+    default:
+      return 0.03;
+  }
 }
 
 function buildReasoning(finding: RawFinding, profile: TargetProfile, confidence: number): string {
@@ -119,6 +140,16 @@ function buildProofOfConcept(finding: RawFinding): string {
       return `Run the vulnerable package through the published advisory reproduction steps, then verify whether ${String(
         finding.metadata?.packageName ?? "the dependency",
       )} is reachable from the application code path.`;
+    case "xss":
+      return `Submit the payload shown in the evidence to ${location?.path ?? "the endpoint"} and check whether it is reflected unsanitized in the DOM or triggers JavaScript execution.`;
+    case "injection":
+      return `Send the injection payload to ${location?.path ?? "the endpoint"} and observe error messages, timing differences, or unexpected data in the response.`;
+    case "auth-bypass":
+      return `Replay the request with the bypass headers shown and compare the response status/body against an unauthenticated baseline.`;
+    case "idor":
+      return `Change the numeric ID in the URL and verify whether a different user's data is returned without authorization.`;
+    case "security-header":
+      return `Inspect the response headers from ${location?.path ?? "the target"} and confirm the missing security header is not set on any response.`;
     default:
       return `Review ${location?.path}:${location?.line ?? 1}, exercise the affected code path with attacker-controlled input, and confirm the vulnerable behavior before treating this finding as exploitable.`;
   }
@@ -132,6 +163,14 @@ function buildFixSuggestion(finding: RawFinding): string {
       return `Upgrade the affected dependency to a patched version and validate the transitive tree. Add a version pin or renovate rule if this package frequently regresses.`;
     case "misconfiguration":
       return "Apply the secure default recommended by the scanner, then add a configuration test to prevent the setting from regressing.";
+    case "xss":
+      return "Sanitize or encode all user-supplied data before rendering in HTML. Use a context-aware output encoding library and implement a strict Content-Security-Policy.";
+    case "security-header":
+      return "Add the missing security header to all responses. Configure at the reverse proxy or application middleware level and verify with automated header checks.";
+    case "auth-bypass":
+      return "Ensure authorization checks are performed server-side independent of request headers. Do not trust X-Forwarded-For or similar proxy headers for access control.";
+    case "idor":
+      return "Implement proper authorization checks that verify the requesting user has access to the specific resource, not just any valid session.";
     default:
       return "Refactor the code path to use safe APIs, add validation on untrusted input, and cover the fix with a regression test.";
   }
@@ -148,6 +187,14 @@ function buildPrompt(finding: RawFinding, profile: TargetProfile): string {
     null,
     2,
   );
+}
+
+const staticSources = new Set(["trivy", "semgrep", "secrets"]);
+const dynamicSources = new Set(["nuclei", "dynamic", "fuzzer"]);
+
+function isStaticDynamicPair(sourceA: string, sourceB: string): boolean {
+  return (staticSources.has(sourceA) && dynamicSources.has(sourceB)) ||
+    (dynamicSources.has(sourceA) && staticSources.has(sourceB));
 }
 
 function getErrorMessage(error: unknown): string {
