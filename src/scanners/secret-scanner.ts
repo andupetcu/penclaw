@@ -61,6 +61,28 @@ const textExtensions = new Set([
 
 const defaultIgnores = ["node_modules/**", ".git/**", "dist/**", "build/**", "coverage/**"];
 
+/** Files that contain high-entropy strings by nature (checksums, hashes) — skip entropy scanning */
+const entropyIgnoreFiles = new Set([
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "composer.lock",
+  "Gemfile.lock",
+  "Cargo.lock",
+  "poetry.lock",
+  "go.sum",
+  "Pipfile.lock",
+  "shrinkwrap.json",
+  "npm-shrinkwrap.json",
+]);
+
+/** Patterns that look like integrity hashes / checksums, not secrets */
+const entropyFalsePositivePatterns = [
+  /^sha[0-9]+-/,             // npm integrity hashes: sha512-...
+  /^[0-9a-f]{40,128}$/,      // hex hashes (SHA-1, SHA-256, SHA-512)
+  /^[A-Za-z0-9+/]{40,}={0,3}$/, // pure base64 blobs without any prefix context
+];
+
 export async function runSecretScan(targetPath: string, config: PenClawConfig): Promise<ScannerResult> {
   const startedAt = Date.now();
   const warnings: string[] = [];
@@ -131,6 +153,13 @@ function scanPatterns(filePath: string, contents: string): RawFinding[] {
 }
 
 function scanHighEntropy(filePath: string, contents: string): RawFinding[] {
+  const fileName = path.basename(filePath);
+
+  // Skip lockfiles entirely — they are full of integrity hashes / checksums
+  if (entropyIgnoreFiles.has(fileName)) {
+    return [];
+  }
+
   const findings: RawFinding[] = [];
   const lines = contents.split(/\r?\n/);
 
@@ -139,6 +168,11 @@ function scanHighEntropy(filePath: string, contents: string): RawFinding[] {
     const candidates = line.match(/[A-Za-z0-9+/=_-]{24,}/g) ?? [];
     for (const candidate of candidates) {
       if (candidate.includes("://")) {
+        continue;
+      }
+
+      // Skip known non-secret high-entropy patterns
+      if (isEntropyFalsePositive(candidate, line)) {
         continue;
       }
 
@@ -162,6 +196,27 @@ function scanHighEntropy(filePath: string, contents: string): RawFinding[] {
   }
 
   return findings;
+}
+
+function isEntropyFalsePositive(candidate: string, line: string): boolean {
+  // Check candidate against known false-positive patterns
+  for (const pattern of entropyFalsePositivePatterns) {
+    if (pattern.test(candidate)) {
+      return true;
+    }
+  }
+
+  // Lines containing "integrity" keys (e.g. in manifests/lockfiles)
+  if (/\bintegrity\b/i.test(line)) {
+    return true;
+  }
+
+  // Checksum / hash lines in various formats
+  if (/\b(?:checksum|sha256|sha512|sha1|hash|digest)\b/i.test(line)) {
+    return true;
+  }
+
+  return false;
 }
 
 function offsetToLine(contents: string, offset: number): number {
