@@ -35,7 +35,7 @@ export async function runNucleiScan(targetUrl: string, config: PenClawConfig): P
       "-silent",
       "-severity", "info,low,medium,high,critical",
       "-type", "http",
-      "-no-update-templates",
+      "-disable-update-check",
     ];
 
     for (const excludePath of config.scan?.excludeVulns ?? []) {
