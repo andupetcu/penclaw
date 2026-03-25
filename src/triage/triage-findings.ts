@@ -25,9 +25,12 @@ export async function triageFindings(
 
     try {
       const aiResponse = await provider.summarize(buildPrompt(finding, profile));
+      const parsed = parseAiTriage(aiResponse);
       triagedFindings.push({
         ...fallback,
-        reasoning: aiResponse || fallback.reasoning,
+        reasoning: parsed.reasoning || aiResponse || fallback.reasoning,
+        proofOfConcept: parsed.proofOfConcept || fallback.proofOfConcept,
+        fixSuggestion: parsed.fixSuggestion || fallback.fixSuggestion,
       });
     } catch (error) {
       warnings.push(`AI triage failed for ${finding.ruleId}: ${getErrorMessage(error)}`);
@@ -182,11 +185,41 @@ function buildPrompt(finding: RawFinding, profile: TargetProfile): string {
       targetProfile: profile,
       finding,
       instruction:
-        "Summarize exploitability, false positive risk, a proof of concept approach, and a concrete fix suggestion in 4 short paragraphs.",
+        "Respond with exactly 3 sections labeled REASONING:, PROOF_OF_CONCEPT:, and FIX:. " +
+        "REASONING: Assess exploitability and false positive likelihood in 2-3 sentences. " +
+        "PROOF_OF_CONCEPT: Give a specific, actionable proof of concept (curl command, code snippet, or step-by-step). " +
+        "FIX: Provide a concrete fix with code or config changes.",
     },
     null,
     2,
   );
+}
+
+function parseAiTriage(response: string): {
+  reasoning: string;
+  proofOfConcept: string;
+  fixSuggestion: string;
+} {
+  const sections: Record<string, string> = {};
+  const sectionPattern = /(?:^|\n)\s*\**\s*(REASONING|PROOF_OF_CONCEPT|FIX)\s*:?\s*\**\s*/gi;
+  const markers: Array<{ key: string; index: number; matchStart: number }> = [];
+
+  let match: RegExpExecArray | null;
+  while ((match = sectionPattern.exec(response)) !== null) {
+    markers.push({ key: match[1]!.toUpperCase(), index: match.index + match[0].length, matchStart: match.index });
+  }
+
+  for (let i = 0; i < markers.length; i++) {
+    const start = markers[i]!.index;
+    const end = i + 1 < markers.length ? markers[i + 1]!.matchStart : response.length;
+    sections[markers[i]!.key] = response.slice(start, end).trim();
+  }
+
+  return {
+    reasoning: sections["REASONING"] ?? "",
+    proofOfConcept: sections["PROOF_OF_CONCEPT"] ?? "",
+    fixSuggestion: sections["FIX"] ?? "",
+  };
 }
 
 const staticSources = new Set(["trivy", "semgrep", "secrets"]);
