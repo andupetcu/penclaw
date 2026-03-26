@@ -73,13 +73,7 @@ export async function runScanCommand(options: ScanOptions): Promise<void> {
         allRawFindings.push(...nucleiResult.findings);
         allWarnings.push(...nucleiResult.warnings);
 
-        // OWASP header + endpoint checks
-        spinner.text = `Running OWASP checks on ${urlTarget}`;
-        const owaspResult = await runOwaspChecks(urlProfile.url);
-        allRawFindings.push(...owaspResult.findings);
-        allWarnings.push(...owaspResult.warnings);
-
-        // Playwright crawl + XSS verification
+        // Playwright crawl (moved before OWASP so we have forms + endpoints)
         spinner.text = `Crawling ${urlTarget}`;
         const crawlResult = await crawlTarget({
           baseUrl: urlTarget,
@@ -87,6 +81,37 @@ export async function runScanCommand(options: ScanOptions): Promise<void> {
           maxCrawlDepth: 3,
         });
 
+        // OWASP header + endpoint + CORS + CSRF + open redirect checks
+        spinner.text = `Running OWASP checks on ${urlTarget}`;
+        const owaspResult = await runOwaspChecks(urlProfile.url, crawlResult.forms, crawlResult.endpoints);
+        allRawFindings.push(...owaspResult.findings);
+        allWarnings.push(...owaspResult.warnings);
+
+        // Directory scanning (Agent A module — try/catch if not available yet)
+        if (mergedConfig.scan?.skipDirectoryScan !== true) {
+          try {
+            spinner.text = `Scanning directories on ${urlTarget}`;
+            const { runDirectoryScan } = await import("../dynamic/directory-scanner.js");
+            const dirResult = await runDirectoryScan(urlTarget, mergedConfig);
+            allRawFindings.push(...dirResult.findings);
+            allWarnings.push(...dirResult.warnings);
+          } catch {
+            allWarnings.push("Directory scanner module not available — skipping directory scan.");
+          }
+        }
+
+        // API fuzzing (enhanced with concurrency options)
+        if (crawlResult.endpoints.length > 0) {
+          spinner.text = `Fuzzing ${crawlResult.endpoints.length} API endpoints`;
+          const fuzzResult = await fuzzEndpoints(crawlResult.endpoints, urlTarget, {
+            maxConcurrentRequests: mergedConfig.scan?.maxConcurrentRequests,
+            requestDelayMs: mergedConfig.scan?.requestDelayMs,
+          });
+          allRawFindings.push(...fuzzResult.findings);
+          allWarnings.push(...fuzzResult.warnings);
+        }
+
+        // XSS verification
         if (crawlResult.forms.length > 0) {
           spinner.text = `Verifying XSS on ${crawlResult.forms.length} forms`;
           const xssResult = await verifyXss(urlTarget, crawlResult.forms);
@@ -94,12 +119,21 @@ export async function runScanCommand(options: ScanOptions): Promise<void> {
           allWarnings.push(...xssResult.warnings);
         }
 
-        // API fuzzing
-        if (crawlResult.endpoints.length > 0) {
-          spinner.text = `Fuzzing ${crawlResult.endpoints.length} API endpoints`;
-          const fuzzResult = await fuzzEndpoints(crawlResult.endpoints, urlTarget);
-          allRawFindings.push(...fuzzResult.findings);
-          allWarnings.push(...fuzzResult.warnings);
+        // JWT testing (Agent A module — try/catch if not available yet)
+        if (mergedConfig.scan?.skipJwtTests !== true) {
+          try {
+            spinner.text = `Testing JWT security on ${urlTarget}`;
+            const { testJwtSecurity } = await import("../dynamic/jwt-scanner.js");
+            const jwtResult = await testJwtSecurity(crawlResult, {
+              baseUrl: urlTarget,
+              maxConcurrentRequests: mergedConfig.scan?.maxConcurrentRequests,
+              requestDelayMs: mergedConfig.scan?.requestDelayMs,
+            });
+            allRawFindings.push(...jwtResult.findings);
+            allWarnings.push(...jwtResult.warnings);
+          } catch {
+            allWarnings.push("JWT scanner module not available — skipping JWT tests.");
+          }
         }
       } else if (!doDynamic && targets.urls.length > 0) {
         allWarnings.push("URL target provided but dynamic scanning is disabled. Use --dynamic or --full to enable.");

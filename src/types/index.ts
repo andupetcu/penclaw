@@ -1,6 +1,6 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
-export type FindingSource = "trivy" | "semgrep" | "secrets" | "ai" | "nuclei" | "dynamic" | "fuzzer";
+export type FindingSource = "trivy" | "semgrep" | "secrets" | "ai" | "nuclei" | "dynamic" | "fuzzer" | "jwt" | "directory";
 
 export interface EvidenceLocation {
   path: string;
@@ -90,6 +90,11 @@ export interface PenClawConfig {
     excludePaths?: string[];
     excludeVulns?: string[];
     customRules?: string;
+    maxConcurrentRequests?: number;
+    requestDelayMs?: number;
+    skipDirectoryScan?: boolean;
+    skipJwtTests?: boolean;
+    directoryWordlist?: string;
   };
   ai?: AIProviderConfig;
   output?: {
@@ -123,6 +128,8 @@ export interface DynamicScanConfig {
   maxCrawlDepth?: number;
   maxPages?: number;
   excludePatterns?: string[];
+  maxConcurrentRequests?: number;
+  requestDelayMs?: number;
 }
 
 export interface CrawlResult {
@@ -150,6 +157,14 @@ export interface DiscoveredForm {
   method: string;
   inputs: Array<{ name: string; type: string; value?: string }>;
   pageUrl: string;
+}
+
+export interface Payload {
+  value: string;
+  technique: string;
+  description: string;
+  dbms?: string;
+  context?: string;
 }
 
 export interface SarifReport {

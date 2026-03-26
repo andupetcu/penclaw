@@ -1,6 +1,10 @@
-import type { RawFinding, ScannerResult, UrlProfileInfo } from "../types/index.js";
+import type { DiscoveredEndpoint, DiscoveredForm, RawFinding, ScannerResult, UrlProfileInfo } from "../types/index.js";
 
-export async function runOwaspChecks(urlInfo: UrlProfileInfo): Promise<ScannerResult> {
+export async function runOwaspChecks(
+  urlInfo: UrlProfileInfo,
+  forms?: DiscoveredForm[],
+  endpoints?: DiscoveredEndpoint[],
+): Promise<ScannerResult> {
   const startedAt = Date.now();
   const warnings: string[] = [];
   const findings: RawFinding[] = [];
@@ -10,6 +14,13 @@ export async function runOwaspChecks(urlInfo: UrlProfileInfo): Promise<ScannerRe
     findings.push(...checkCookieSecurity(urlInfo));
     findings.push(...checkInformationDisclosure(urlInfo));
     findings.push(...await checkCommonEndpoints(urlInfo.baseUrl));
+    findings.push(...await checkCorsMisconfiguration(urlInfo));
+    if (forms && forms.length > 0) {
+      findings.push(...checkCsrfProtection(forms, urlInfo));
+    }
+    if (endpoints && endpoints.length > 0) {
+      findings.push(...await checkOpenRedirect(urlInfo, endpoints));
+    }
   } catch (error) {
     warnings.push(`OWASP checks failed: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -278,6 +289,187 @@ async function checkCommonEndpoints(baseUrl: string): Promise<RawFinding[]> {
 
   await Promise.all(checks);
   return findings;
+}
+
+// ---------------------------------------------------------------------------
+// CORS Misconfiguration check
+// ---------------------------------------------------------------------------
+
+export async function checkCorsMisconfiguration(urlInfo: UrlProfileInfo): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const baseUrl = urlInfo.baseUrl;
+
+  const origins = [
+    { origin: "https://evil.com", label: "arbitrary origin" },
+    { origin: "null", label: "null origin" },
+    { origin: `https://${new URL(baseUrl).hostname}.evil.com`, label: "subdomain bypass" },
+  ];
+
+  for (const { origin, label } of origins) {
+    try {
+      const response = await fetch(baseUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "PenClaw/0.1.0 Security Scanner",
+          "Origin": origin,
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(5_000),
+      });
+
+      const acao = response.headers.get("access-control-allow-origin");
+      const acac = response.headers.get("access-control-allow-credentials");
+
+      if (acao && (acao === origin || acao === "*")) {
+        const hasCredentials = acac?.toLowerCase() === "true";
+        findings.push({
+          id: `owasp-cors-${label.replace(/\s+/g, "-")}-${baseUrl}`,
+          source: "dynamic",
+          ruleId: "owasp-cors-misconfiguration",
+          title: `CORS misconfiguration: ${label} reflected`,
+          description: `The server reflects the Origin header '${origin}' in Access-Control-Allow-Origin${hasCredentials ? " with credentials allowed" : ""}. This may allow cross-origin attacks.`,
+          severity: hasCredentials ? "high" : "medium",
+          category: "cors",
+          locations: [{ path: baseUrl, snippet: `ACAO: ${acao}${hasCredentials ? ", ACAC: true" : ""}` }],
+          references: ["https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny"],
+          metadata: {
+            testedOrigin: origin,
+            reflectedOrigin: acao,
+            credentialsAllowed: hasCredentials,
+          },
+        });
+      }
+    } catch {
+      // Request failed — skip this origin test
+    }
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// CSRF Protection check
+// ---------------------------------------------------------------------------
+
+const CSRF_TOKEN_NAMES = /csrf|_token|authenticity_token|__requestverificationtoken|xsrf/i;
+
+export function checkCsrfProtection(forms: DiscoveredForm[], urlInfo: UrlProfileInfo): RawFinding[] {
+  const findings: RawFinding[] = [];
+
+  const postForms = forms.filter((f) => f.method.toUpperCase() === "POST");
+
+  for (const form of postForms) {
+    const hasCsrfToken = form.inputs.some((input) => CSRF_TOKEN_NAMES.test(input.name));
+
+    if (!hasCsrfToken) {
+      // Check if cookies have SameSite protection
+      const setCookie = urlInfo.headers["set-cookie"] ?? "";
+      const hasSameSite = /SameSite=(Strict|Lax)/i.test(setCookie);
+
+      if (!hasSameSite) {
+        findings.push({
+          id: `owasp-csrf-${form.action.replace(/\W/g, "-")}-${form.pageUrl.replace(/\W/g, "-")}`,
+          source: "dynamic",
+          ruleId: "owasp-missing-csrf-protection",
+          title: `Missing CSRF protection on POST form`,
+          description: `A POST form (action: ${form.action}) on ${form.pageUrl} has no CSRF token and no SameSite cookie protection.`,
+          severity: "medium",
+          category: "csrf",
+          locations: [{ path: form.pageUrl, snippet: `action="${form.action}" method="POST"` }],
+          references: ["https://owasp.org/www-community/attacks/csrf"],
+          metadata: {
+            formAction: form.action,
+            formInputs: form.inputs.map((i) => i.name),
+          },
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Open Redirect check
+// ---------------------------------------------------------------------------
+
+const REDIRECT_PARAM_PATTERN = /^(redirect|url|next|return|goto|continue|dest|redirect_uri|return_to|redir|forward)$/i;
+
+const OPEN_REDIRECT_PAYLOADS = [
+  "//evil.com",
+  "https://evil.com",
+  "/\\evil.com",
+  "//evil.com/%2f..",
+  "///evil.com",
+  "////evil.com",
+  "https:evil.com",
+];
+
+export async function checkOpenRedirect(
+  urlInfo: UrlProfileInfo,
+  endpoints: DiscoveredEndpoint[],
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  for (const endpoint of endpoints) {
+    const redirectParams = endpoint.parameters.filter((p) => REDIRECT_PARAM_PATTERN.test(p));
+    if (redirectParams.length === 0) continue;
+
+    for (const param of redirectParams) {
+      for (const payload of OPEN_REDIRECT_PAYLOADS) {
+        try {
+          const urlObj = new URL(endpoint.url);
+          urlObj.searchParams.set(param, payload);
+
+          const response = await fetch(urlObj.href, {
+            method: "GET",
+            redirect: "manual",
+            headers: { "User-Agent": "PenClaw/0.1.0 Security Scanner" },
+            signal: AbortSignal.timeout(5_000),
+          });
+
+          const location = response.headers.get("location");
+          if (location && isExternalRedirect(location)) {
+            findings.push({
+              id: `owasp-open-redirect-${param}-${endpoint.url.replace(/\W/g, "-")}`,
+              source: "dynamic",
+              ruleId: "owasp-open-redirect",
+              title: `Open redirect via parameter '${param}'`,
+              description: `The parameter '${param}' at ${endpoint.url} redirects to an external URL when injected with '${payload}'. Location: ${location}`,
+              severity: "medium",
+              category: "open-redirect",
+              locations: [{ path: endpoint.url, snippet: `${param}=${payload} → ${location}` }],
+              references: ["https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect"],
+              metadata: {
+                parameter: param,
+                payload,
+                redirectLocation: location,
+              },
+            });
+            break; // One confirmed per param is enough
+          }
+        } catch {
+          // Skip
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+function isExternalRedirect(location: string): boolean {
+  // Check if the Location header points to a domain containing "evil.com"
+  try {
+    if (location.startsWith("//")) {
+      const url = new URL(`https:${location}`);
+      return url.hostname.includes("evil.com");
+    }
+    const url = new URL(location);
+    return url.hostname.includes("evil.com");
+  } catch {
+    return location.includes("evil.com");
+  }
 }
 
 /**
