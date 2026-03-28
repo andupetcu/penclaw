@@ -59,9 +59,9 @@ def load_config():
     return str(config)
 
 # --- Hardcoded Credentials ---
-DB_PASSWORD = "postgres_p@ssw0rd_2024"
-API_SECRET = "REDACTED_EXAMPLE_KEY"
-PRIVATE_TOKEN = "glpat-xxxxxxxxxxxxxxxxxxxx"
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "changeme")  # was hardcoded
+API_SECRET = os.environ.get("API_SECRET", "changeme")    # was hardcoded
+PRIVATE_TOKEN = os.environ.get("PRIVATE_TOKEN", "")      # was hardcoded
 
 # --- SSRF ---
 @app.route("/fetch")
